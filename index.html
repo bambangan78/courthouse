@@ -109,8 +109,8 @@
 
         // Build tooltip content for edge and both nodes
         const edgeInfo = `<strong>Duration:</strong> ${Math.round(d.duration.toFixed(0) / 60)} min`;
-        const nodeA = `<strong>${d.source.city}</strong>, ${d.source.county} County`;
-        const nodeB = `<strong>${d.target.city}</strong>, ${d.target.county} County`;
+        const nodeA = `<strong>${d.source.city}</strong>, ${d.source.county} County, ${d.source.state}`;
+        const nodeB = `<strong>${d.target.city}</strong>, ${d.target.county} County, ${d.source.state}`;
 
         tooltip.style('opacity', 1)
                .html(`${edgeInfo}<br>${nodeA}<br>${nodeB}`);
