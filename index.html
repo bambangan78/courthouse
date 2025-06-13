@@ -102,10 +102,18 @@
     .attr('y1', d => d.source.y)
     .attr('x2', d => d.target.x)
     .attr('y2', d => d.target.y)
-    .attr('stroke-width', d => Math.max(.4, 2 - d.duration/4000))
-    .on('mouseover', (e,d) => {
-      tooltip.style('opacity', 1)
-             .html(`<strong>Duration:</strong> ${Math.round(d.duration.toFixed(0) / 60)} min`);
+    .attr('stroke-width', d => Math.max(.6, 2 - d.duration/4000))
+    .on('mouseover', (e, d) => {
+        const mouseX = e.pageX;
+        const mouseY = e.pageY;
+
+        // Build tooltip content for edge and both nodes
+        const edgeInfo = `<strong>Duration:</strong> ${Math.round(d.duration.toFixed(0) / 60)} min`;
+        const nodeA = `<strong>${d.source.city}</strong>, ${d.source.county} County`;
+        const nodeB = `<strong>${d.target.city}</strong>, ${d.target.county} County`;
+
+        tooltip.style('opacity', 1)
+               .html(`${edgeInfo}<br>${nodeA}<br>${nodeB}`);
     })
     .on('mousemove', e => {
       tooltip.style('left', (e.pageX + 10) + 'px')
