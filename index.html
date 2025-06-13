@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>County Courthouse Graph</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  svg  { width: 100vw; height: 100vh; background: #f8f8f8; }
+
+  /* Nodes & edges */
+  circle     { fill: crimson; }
+  line       { stroke: steelblue; stroke-opacity: .25; }
+
+  /* Text */
+  .node-label { font: 9px sans-serif; pointer-events: none; }
+  .edge-label { font: 8px sans-serif; pointer-events: none; text-anchor: middle; fill:#333; }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    padding: 4px 6px;
+    background: rgba(0,0,0,.8);
+    color: #fff; font: 11px sans-serif;
+    border-radius: 3px; pointer-events: none;
+    white-space: nowrap; z-index: 10; }
+</style>
+</head>
+<body>
+
+<div id="tooltip" class="tooltip" style="opacity:0"></div>
+<svg id="graph"></svg>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+(async () => {
+  /* ---------------- Constants ---------------- */
+  const LABEL_SHOW_K      = 2.5;  // node labels visible when zoom scale > this
+  const EDGE_LABEL_SHOW_K = 6;    // edge durations visible when zoom scale > this
+
+  /* --------------- SVG setup --------------- */
+  const svg = d3.select('#graph');
+  const g   = svg.append('g');     // everything zooms inside this <g>
+  const tooltip = d3.select('#tooltip');
+
+  svg.call(
+    d3.zoom()
+      .scaleExtent([0.2, 25])
+      .on('zoom', (e) => {
+        g.attr('transform', e.transform);
+        labelLayer.style('display',  e.transform.k > LABEL_SHOW_K      ? null : 'none');
+      })
+  );
+
+  /* --------------- Load data --------------- */
+  const [csvText, graph] = await Promise.all([
+    fetch('courthouses.csv').then(r => r.text()),
+    fetch('graph.json').then(r => r.json())
+  ]);
+
+  const nodeMap = new Map();  // id -> node object
+
+  // ---- Parse CSV ----
+  Papa.parse(csvText, {
+    header: false, skipEmptyLines: true,
+    complete: ({data}) => data.forEach(([id, county, city, state, lon, lat]) => {
+      nodeMap.set(id, {
+        id, city, county, lat:+lat, lon:+lon
+      });
+    })
+  });
+
+  // ---- Compute projection (simple linear) ----
+  const lats = [...nodeMap.values()].map(d => d.lat);
+  const lons = [...nodeMap.values()].map(d => d.lon);
+  const x = d3.scaleLinear().domain(d3.extent(lons)).range([40, window.innerWidth - 40]);
+  const y = d3.scaleLinear().domain(d3.extent(lats)).range([window.innerHeight - 40, 40]);
+
+  nodeMap.forEach(d => { d.x = x(d.lon); d.y = y(d.lat); });
+
+  /* --------------- Build link list --------------- */
+  const links = [];
+  for (const [srcId, nbrs] of Object.entries(graph)) {
+    for (const [dstId, [duration]] of Object.entries(nbrs)) {
+      if (srcId === dstId) continue;
+      const s = nodeMap.get(srcId), t = nodeMap.get(dstId);
+      if (s && t) links.push({source:s, target:t, duration});
+    }
+  }
+
+  /* --------------- Layers --------------- */
+  const edgeLayer       = g.append('g');
+  const edgeLabelLayer  = g.append('g').style('display','none');
+  const nodeLayer       = g.append('g');
+  const labelLayer      = g.append('g').style('display','none');
+
+  /* --------------- Draw edges --------------- */
+  edgeLayer.selectAll('line')
+  .data(links)
+  .enter().append('line')
+    .attr('x1', d => d.source.x)
+    .attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x)
+    .attr('y2', d => d.target.y)
+    .attr('stroke-width', d => Math.max(.4, 2 - d.duration/4000))
+    .on('mouseover', (e,d) => {
+      tooltip.style('opacity', 1)
+             .html(`<strong>Duration:</strong> ${Math.round(d.duration.toFixed(0) / 60)} min`);
+    })
+    .on('mousemove', e => {
+      tooltip.style('left', (e.pageX + 10) + 'px')
+             .style('top', (e.pageY - 10) + 'px');
+    })
+    .on('mouseout', () => tooltip.style('opacity', 0));
+
+
+  /* --------------- Draw nodes --------------- */
+  nodeLayer.selectAll('circle')
+    .data([...nodeMap.values()])
+    .enter().append('circle')
+      .attr('cx', d => d.x).attr('cy', d => d.y)
+      .attr('r', 2.25)
+      .on('mouseover', (e,d) => {
+        tooltip.style('opacity',1)
+               .html(`<strong>${d.city}</strong>, ${d.county} County`);
+      })
+      .on('mousemove', e => tooltip
+        .style('left',  (e.pageX + 10)+'px')
+        .style('top',   (e.pageY - 10)+'px'))
+      .on('mouseout',  () => tooltip.style('opacity',0));
+})();
+</script>
+</body>
+</html>
