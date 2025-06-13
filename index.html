@@ -65,7 +65,7 @@
     header: false, skipEmptyLines: true,
     complete: ({data}) => data.forEach(([id, county, city, state, lon, lat]) => {
       nodeMap.set(id, {
-        id, city, county, lat:+lat, lon:+lon
+        id, city, county, state, lat:+lat, lon:+lon
       });
     })
   });
@@ -130,7 +130,7 @@
       .attr('r', 2.25)
       .on('mouseover', (e,d) => {
         tooltip.style('opacity',1)
-               .html(`<strong>${d.city}</strong>, ${d.county} County`);
+               .html(`<strong>${d.city}</strong>, ${d.county} County, ${d.source.state}`);
       })
       .on('mousemove', e => tooltip
         .style('left',  (e.pageX + 10)+'px')
